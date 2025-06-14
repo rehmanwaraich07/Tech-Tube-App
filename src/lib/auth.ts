@@ -1,47 +1,72 @@
-import { NextAuthOptions } from "next-auth";
+import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
-import GoogleProvider from "next-auth/providers/google";
-import { connectToDatabase } from "./db";
-import User from "@/models/User";
 import bcrypt from "bcryptjs";
+import { connectToDatabase } from "@/lib/db";
+import User, { IUser } from "@/models/User"; // Make sure this path is correct
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
-      name: "Credentials",
+      name: "credentials",
       credentials: {
-        email: { label: "Email", type: "text" },
+        email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || credentials?.password) {
-          throw new Error("Missing Email and Password");
+        if (!credentials?.email || !credentials?.password) {
+          console.log("Missing credentials");
+          return null;
         }
+
         try {
           await connectToDatabase();
-          const user = await User.findOne({
+
+          // Debug: Log the email being searched
+          console.log("Looking for user with email:", credentials.email);
+
+          // Find user by email
+          const user = (await User.findOne({
             email: credentials.email,
-          });
+          }).lean()) as unknown as IUser;
 
           if (!user) {
-            throw new Error("User not found with this Email");
+            console.log("User not found with email:", credentials.email);
+            return null;
           }
 
-          const isValid = bcrypt.compare(credentials.password, user.password);
+          console.log("User found:", { id: user._id, email: user.email });
 
-          if (!isValid) {
-            throw new Error("Wrong Password");
+          // Compare password
+          const isPasswordValid = await bcrypt.compare(
+            credentials.password,
+            user.password
+          );
+
+          console.log("Password validation result:", isPasswordValid);
+
+          if (!isPasswordValid) {
+            console.log("Invalid password for user:", credentials.email);
+            return null;
           }
 
+          // Return user object
           return {
-            id: user._id.toString(),
+            id: user._id?.toString() || "",
             email: user.email,
           };
         } catch (error) {
-          throw new Error("Something went wrong during login", error as Error);
+          console.error("Auth error:", error);
+          return null;
         }
       },
     }),
   ],
+  session: {
+    strategy: "jwt",
+  },
+  pages: {
+    signIn: "/login",
+  },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
@@ -49,26 +74,12 @@ export const authOptions: NextAuthOptions = {
       }
       return token;
     },
-
     async session({ session, token }) {
-      if (session.user) {
+      if (token) {
         session.user.id = token.id as string;
       }
       return session;
     },
-    async redirect({ url, baseUrl }) {
-      if (url.startsWith("/")) return `${baseUrl}${url}`;
-      else if (new URL(url).origin === baseUrl) return url;
-      return baseUrl;
-    },
   },
-  pages: {
-    signIn: "/login",
-    error: "/login",
-  },
-  session: {
-    strategy: "jwt",
-    maxAge: 30 * 24 * 60 * 60, // 30 days
-  },
-  secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === "development", // Enable debug logs in development
 };

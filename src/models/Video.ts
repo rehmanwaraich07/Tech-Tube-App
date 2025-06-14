@@ -1,4 +1,5 @@
-import mongoose, { Schema, model, models } from "mongoose";
+import type mongoose from "mongoose";
+import { Schema, model, models } from "mongoose";
 
 export const VIDEO_DIMENSIONS = {
   width: 1080,
@@ -17,6 +18,16 @@ export interface IVideo {
     height: number;
     quality?: number;
   };
+  // User information
+  uploadedBy?: {
+    id: string;
+    email: string;
+    name?: string;
+  };
+  views?: number;
+  duration?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 const videoSchema = new Schema<IVideo>(
@@ -31,6 +42,13 @@ const videoSchema = new Schema<IVideo>(
       width: { type: Number, default: VIDEO_DIMENSIONS.width },
       quality: { type: Number, min: 1, max: 100 },
     },
+    uploadedBy: {
+      id: { type: String },
+      email: { type: String },
+      name: { type: String },
+    },
+    views: { type: Number, default: 0 },
+    duration: { type: Number, default: 0 },
   },
   {
     timestamps: true,

@@ -3,7 +3,7 @@
 import type React from "react";
 
 import { useState, useEffect } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -49,19 +49,36 @@ const LoginPage = () => {
     setError("");
     setIsLoading(true);
 
+    console.log("Attempting login with:", {
+      email,
+      passwordLength: password.length,
+    });
+
     try {
       const result = await signIn("credentials", {
-        email,
+        email: email.trim().toLowerCase(), // Ensure consistent email format
         password,
         redirect: false,
       });
 
+      console.log("SignIn result:", result);
+
       if (result?.error) {
-        setError("Invalid email or password. Please try again.");
-      } else {
+        console.error("Login error:", result.error);
+        setError(
+          "Invalid email or password. Please check your credentials and try again."
+        );
+      } else if (result?.ok) {
+        console.log("Login successful, redirecting...");
+        // Double-check session before redirecting
+        const session = await getSession();
+        console.log("Session after login:", session);
         router.push("/");
+      } else {
+        setError("An unexpected error occurred. Please try again.");
       }
     } catch (error) {
+      console.error("Login exception:", error);
       setError("An unexpected error occurred. Please try again.");
     } finally {
       setIsLoading(false);
@@ -121,6 +138,7 @@ const LoginPage = () => {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   className="h-11"
+                  autoComplete="email"
                 />
               </div>
 
@@ -135,6 +153,7 @@ const LoginPage = () => {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     className="h-11 pr-10"
+                    autoComplete="current-password"
                   />
                   <Button
                     type="button"
