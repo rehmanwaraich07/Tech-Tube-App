@@ -23,6 +23,14 @@ export const metadata: Metadata = {
   title: "TechTube",
   description:
     "TechTube - Your Ultimate Tech Video Sharing Platform. Share, discover, and engage with the latest technology videos, tutorials, and insights. Join our community of tech enthusiasts and creators to learn, share knowledge, and stay updated with cutting-edge technology trends.",
+    icons: {
+    icon: [
+      {
+        url: "/favicon.png", // favicon added
+        sizes: "any",
+      },
+    ],
+  },
 };
 
 export default function RootLayout({
